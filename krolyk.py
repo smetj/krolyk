@@ -3,7 +3,7 @@
 #
 #       krolyk.py
 #       
-#       Copyright 2011 Jelle <jelle@indigo>
+#       Copyright 2011 Jelle Smet <development@smetj.net>
 #       
 #       This program is free software; you can redistribute it and/or modify
 #       it under the terms of the GNU General Public License as published by
@@ -25,12 +25,12 @@
 import logging
 import os
 import sys
-from logging.handlers import SysLogHandler
-from optparse import OptionParser
+import pika
 import time
 from multiprocessing import Process, Manager, Queue
-from ctypes import c_char_p
-
+from pika.adapters import SelectConnection
+from logging.handlers import SysLogHandler
+from optparse import OptionParser
 
 __version__='0.1'
 
@@ -54,21 +54,52 @@ class Logger():
 		return log
 class Worker(Process):
 	'''Consumes from RabbitMQ and writes into Nagios named pipe.'''
-	def __init__(self,logger,block):
+	def __init__(self,config,logger,block):
 		Process.__init__(self)
+		self.c=config
 		self.logger=logger
+		
 		self.block=block
+		self.nagios_pipe= open (self.c['pipe'],'w+')
 		self.daemon=True
 		self.start()
 	def run(self):
 		self.logger.debug('Started.')
 		while self.block() == True:
+			#Setup RabbitMQ connections
+			credentials = pika.PlainCredentials(self.c['user'],self.c['password'])
+			self.parameters = pika.ConnectionParameters(self.c['broker'],credentials=credentials)
+			self.connection = SelectConnection(self.parameters,self.__on_connected)	
 			try:
-				time.sleep(0.1)
-			except:
-				pass
-		
-		
+				self.connection.ioloop.start()
+			except KeyboardInterrupt:
+				self.connection.close()
+				self.connection.ioloop.start()
+				self.nagios_pipe.close()
+				break
+	def __on_connected(self,connection):
+		self.logger.info('Connecting to broker.')
+		connection.channel(self.__on_channel_open)
+	def __on_channel_open(self,new_channel):
+		self.channel = new_channel
+		self.__initialize()
+		self.channel.basic_consume(self.processData, queue = self.c['queue'])
+		self.channel.basic_qos(prefetch_count=1)
+	def processData(self,ch, method, properties, body):
+		"""Processes the data coming from the RabbitMQ broker."""
+		try:
+			body = body.lstrip('"')
+			body = body.rstrip('"')
+			body += '\n'
+			self.nagios_pipe.write(body)
+			self.nagios_pipe.flush()
+		except:
+			pass
+		else:
+			self.channel.basic_ack(delivery_tag=method.delivery_tag)			
+	def __initialize(self):
+		self.logger.debug('Creating queues and bindings on broker.')				
+		self.channel.queue_declare(queue=self.c['queue'],durable=True)
 class Server():
 	'''Server class handling process control, startup & shutdown'''
 	def __init__(self,config=None):
@@ -122,7 +153,11 @@ class Server():
 		self.doPID()
 		
 		#Start Consumer
-		self.procs.append(Worker(logger = self.logger, block=self.lock))
+		self.procs.append(	Worker(	config = self.cfg,
+						logger = self.logger,
+						block=self.lock
+						)
+					)
 		
 					
 		while self.lock()==True:
@@ -130,23 +165,61 @@ class Server():
 		
 		self.logger.info('Exit')
 	def stop(self):
+		self.logger.info('Received stop. Starting stop sequence.')
 		self.block=False
 		for process in self.procs:
 			process.join()
+class Help():
+	def __init__(self):
+		print ('Krolyk %s Copyright 2011 by Jelle Smet <development@smetj.net>' %(__version__))
+		print ('''
+		
+Description:
+
+	Krolyk consumes Nagios check results from RabbitMQ and writes these into the Nagios names pipe.
+	
+Usage :
+		
+	krolyk --pid pid --broker broker --user user --password password --queue queue --pipe pipe
+	
+	Valid commands:
+
+		start		Starts Krolyk and forks into the background.
+		stop		Stops Krolyk.	
+		debug		Starts Krolyk into the foreground.
+		help		Shows this help message.
+	
+
+	Parameters:
+
+		pid		Defines the absolute name of the pid file.
+		broker		Defines the hostname of the RabbitMQ broker.
+		user		Defines the user connecting to RabbitMQ.
+		password	Defines the password connecting to RabbitMQ.
+		queue		Defines the queue to consume
+		pipe		Defines the absolute path of the Nagios named pipe.
+
+
+Krolyk is distributed under the Terms of the GNU General Public License Version 3. (http://www.gnu.org/licenses/gpl-3.0.html)
+
+For more information please visit http://www.smetj.net/krolyk/
+		''')
 if __name__ == '__main__':
 	parser = OptionParser()
 	parser.add_option("--pid", dest="pid", default="file.pid", type="string", help="The location of the pid file." )
 	parser.add_option("--broker", dest="broker", default="localhost", type="string", help="The hostname of the RabbitMQ broker." )
 	parser.add_option("--user", dest="user", default="guest", type="string", help="The user used to connect to the broker." )
-	parser.add_option("--password", dest="password", default="password", type="string", help="The password for user." )
-	parser.add_option("--exchange", dest="exchange", default="exchange", type="string", help="The exchange to dump check results to." )
+	parser.add_option("--password", dest="password", default="guest", type="string", help="The password for user." )
+	parser.add_option("--queue", dest="queue", default="krolyk", type="string", help="The queue to consume." )
 	parser.add_option("--pipe", dest="pipe", default="/opt/nagios/var/nagios.cmd", type="string", help="Nagios named pipe." )
 	(cli_options,cli_actions)=parser.parse_args()
 	
 	try:
 		server=Server(config = vars(cli_options))
-		
-		if cli_actions[0] == 'start':
+		if cli_actions[0] == 'help':
+			Help()
+			sys.exit(0)
+		elif cli_actions[0] == 'start':
 			with daemon.DaemonContext():
 				server.start()
 		elif cli_actions[0] == 'debug':
