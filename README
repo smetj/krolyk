@@ -1,0 +1,39 @@
+  |  /              |         |    
+  ' /    __|  _ \   |  |   |  |  / 
+  . \   |    (   |  |  |   |    <  
+ _|\_\ _|   \___/  _| \__, | _|\_\ 
+                      ____/    
+
+Krolyk 0.1 Copyright 2011 by Jelle Smet <development@smetj.net>
+
+		
+Description:
+
+	Krolyk consumes Nagios check results from RabbitMQ and writes these into the Nagios named pipe.
+	
+Usage :
+		
+	krolyk --pid pid --broker broker --user user --password password --queue queue --pipe pipe
+	
+	Valid commands:
+
+		start		Starts Krolyk and forks into the background.
+		stop		Stops Krolyk.	
+		debug		Starts Krolyk into the foreground.
+		help		Shows this help message.
+	
+
+	Parameters:
+
+		pid		Defines the absolute name of the pid file.
+		broker		Defines the hostname of the RabbitMQ broker.
+		user		Defines the user connecting to RabbitMQ.
+		password	Defines the password connecting to RabbitMQ.
+		queue		Defines the queue to consume
+		pipe		Defines the absolute path of the Nagios named pipe.
+
+
+Krolyk is distributed under the Terms of the GNU General Public License Version 3. (http://www.gnu.org/licenses/gpl-3.0.html)
+
+For more information please visit http://www.smetj.net/krolyk/
+
