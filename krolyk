@@ -87,6 +87,7 @@ class Worker(Process):
 		self.channel.basic_qos(prefetch_count=1)
 	def processData(self,ch, method, properties, body):
 		"""Processes the data coming from the RabbitMQ broker."""
+		self.logger.debug('Writing check result to pipe.')
 		try:
 			body = body.lstrip('"')
 			body = body.rstrip('"')
