@@ -149,15 +149,14 @@ class Server():
         
         for module in self.cfg['modules']:
             if self.cfg['modules'][module]['enabled'] == 'True':
-                #try:
+                try:
                     self.logging.info('Module %s enabled importing.' % module)
                     import mods
                     self.modules[module]={}
                     for counter in range(int(self.cfg['modules'][module]['workers'])):
-                        #self.modules[module][counter] = getattr(module,'__init__')(**{'config':self.cfg['modules'][module]})
-                        self.modules[module][counter] = getattr(mods,'nagios')(self.cfg['modules'][module])
-                #except:
-                    #self.logging.warning('Failed to load module %s' % module)
+                        self.modules[module][counter] = getattr(mods,module)(self.cfg['modules'][module])
+                except:
+                    self.logging.warning('Failed to load module %s' % module)
             else:
                 pass
         self.modules['nagios'][0].do()
