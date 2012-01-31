@@ -1,8 +1,10 @@
+<pre>
   |  /              |         |    
   ' /    __|  _ \   |  |   |  |  / 
   . \   |    (   |  |  |   |    <  
  _|\_\ _|   \___/  _| \__, | _|\_\ 
                       ____/    
+</pre>
 
 Krolyk 0.1 Copyright 2011 by Jelle Smet <development@smetj.net>
 
