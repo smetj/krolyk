@@ -32,67 +32,92 @@ from pika.adapters import SelectConnection
 from logging.handlers import SysLogHandler
 from optparse import OptionParser
 from configobj import ConfigObj
+from string import find
 
 __version__='0.1'
 
 class Worker(Process):
-    '''Consumes from RabbitMQ and writes into Nagios named pipe.'''
-    def __init__(self,config,logger,block):
+    def __init__(self,config,cb_consume,block):
         Process.__init__(self)
+        self.logging = logging.getLogger(__name__)
         self.c=config
-        self.logger=logger
-        
+        self.cb_consume=cb_consume
         self.block=block
-        self.nagios_pipe= open (self.c['pipe'],'w+')
         self.daemon=True
-        self.start()
     def run(self):
-        self.logger.debug('Started.')
         while self.block() == True:
-            #Setup RabbitMQ connections
-            credentials = pika.PlainCredentials(self.c['user'],self.c['password'])
-            self.parameters = pika.ConnectionParameters(self.c['broker'],credentials=credentials)
-            self.connection = SelectConnection(self.parameters,self.__on_connected) 
             try:
-                self.connection.ioloop.start()
-            except KeyboardInterrupt:
-                self.connection.close()
-                self.connection.ioloop.start()
-                self.nagios_pipe.close()
-                break
+                self.logging.debug('Started.')
+                credentials = pika.PlainCredentials(self.c['_user'],self.c['_password'])
+                self.parameters = pika.ConnectionParameters(self.c['_broker'],credentials=credentials)
+                self.connection = SelectConnection(self.parameters,self.__on_connected) 
+                try:
+                    self.connection.ioloop.start()
+                except KeyboardInterrupt:
+                    self.connection.close()
+                    self.connection.ioloop.start()
+                    break
+            except:
+                self.logging.debug('Lost connection to Broker, sleeping and restarting.')
+                time.sleep(1)               
     def __on_connected(self,connection):
-        self.logger.info('Connecting to broker.')
+        self.logging.info('Connecting to broker.')
         connection.channel(self.__on_channel_open)
     def __on_channel_open(self,new_channel):
         self.channel = new_channel
         self.__initialize()
-        self.channel.basic_consume(self.processData, queue = self.c['queue'])
         self.channel.basic_qos(prefetch_count=1)
-    def processData(self,ch, method, properties, body):
-        """Processes the data coming from the RabbitMQ broker."""
-        self.logger.debug('Writing check result to pipe.')
-        try:
-            body = body.lstrip('"')
-            body = body.rstrip('"')
-            body += '\n'
-            self.nagios_pipe.write(body)
-            self.nagios_pipe.flush()
-        except:
-            pass
-        else:
-            self.channel.basic_ack(delivery_tag=method.delivery_tag)            
+        self.channel.basic_consume(self.cb_consume, queue = self.c['_queue'])
     def __initialize(self):
-        self.logger.debug('Creating queues and bindings on broker.')                
-        self.channel.queue_declare(queue=self.c['queue'],durable=True)
+        self.logging.debug('Creating queues and bindings on broker.')                
+        self.channel.queue_declare(queue=self.c['_queue'],durable=True)
+    def acknowledge(self,tag):
+        self.channel.basic_ack(delivery_tag=tag)
+class ModManager():
+    def __init__(self,cfg,block):
+        self.logging = logging.getLogger(__name__)
+        self.cfg=cfg
+        self.block=block
+        self.register={}
+        self.__load()        
+    def __load(self):
+        for module in self.cfg:
+            if self.cfg[module]['_enabled'] == 'True':
+                try:
+                    self.logging.info('Module %s enabled importing.' % module)
+                    import mods
+                    self.register[module]={}
+                    for counter in range(int(self.cfg[module]['_workers'])):
+                        self.register[module][counter]={}
+                        self.register[module][counter]['mod'] = getattr(mods,module)()
+                        self.register[module][counter]['mod'].config = self.__cleanConfig(self.cfg[module])
+                        self.register[module][counter]['mod'].block = self.block
+                                                
+                        self.register[module][counter]['proc'] = Worker(config=self.cfg[module],
+                                                                    cb_consume=self.register[module][counter]['mod'].consume,
+                                                                    block=self.block)
 
-
+                        self.register[module][counter]['mod'].acknowledge = self.register[module][counter]['proc'].acknowledge
+                        
+                        self.register[module][counter]['proc'].start()
+                except:
+                    self.logging.warning('Failed to load module %s' % module)
+            else:
+                self.logging.info('Module %s disabled.' % module)
+    def __cleanConfig(self,config):
+        cleaned={}
+        for item in config:
+            if find(item,'_') !=0:
+                cleaned[item]=config[item]
+        return cleaned
+        
 class Server():
     '''Server class handling process control, startup & shutdown'''
     def __init__(self,config=None):
         self.cfg=None
         self.load_config(config)
         self.procs = []
-        self.block = True
+        self.lock = True
     def load_config(self,file):
         try:
             self.cfg = ConfigObj(file)
@@ -100,8 +125,8 @@ class Server():
         except Exception as err:
             print "Error reading config file. Reason: %s" % (err)
             sys.exit(1)        
-    def lock(self):
-        return self.block
+    def block(self):
+        return self.lock
     def doPID(self):
         if self.checkPIDRunning() == False:
             self.writePID()
@@ -137,7 +162,6 @@ class Server():
         except:
             pass                
     def start(self):
-        self.modules = {}
         #Creating logging object
         self.logger()
         self.logging = logging.getLogger(__name__)
@@ -147,32 +171,19 @@ class Server():
         #Write PID
         self.doPID()
         
-        for module in self.cfg['modules']:
-            if self.cfg['modules'][module]['enabled'] == 'True':
-                try:
-                    self.logging.info('Module %s enabled importing.' % module)
-                    import mods
-                    self.modules[module]={}
-                    for counter in range(int(self.cfg['modules'][module]['workers'])):
-                        self.modules[module][counter] = getattr(mods,module)(self.cfg['modules'][module])
-                except:
-                    self.logging.warning('Failed to load module %s' % module)
-            else:
-                pass
-        self.modules['nagios'][0].do()
-                
-                
-                
-
-        while self.lock()==True:
+        #Initiate ModManager
+        self.mod = ModManager(block=self.block,cfg=self.cfg['modules'])
+        
+        while self.block()==True:
             time.sleep(0.1)
         
         self.logging.info('Exit')
     def stop(self):
         self.logging.info('Received stop. Starting stop sequence.')
         self.block=False
-        for process in self.procs:
-            process.join()
+        for module in self.mod.register:
+            for instance in self.mod.register[module]:
+                self.mod.register[module][instance]['proc'].join()
     def logger(self,file=None,loglevel=logging.DEBUG):
         format=('%(asctime)s %(levelname)s %(name)s %(message)s')
         if file == None:
@@ -231,8 +242,8 @@ if __name__ == '__main__':
                 server.start()
         elif cli_actions[0] == 'debug':
             server.start()
-    except Exception as err:
-        print str(err)
+ #   except Exception as err:
+ #       print str(err)
     except KeyboardInterrupt:
         server.stop()
         server.deletePID()

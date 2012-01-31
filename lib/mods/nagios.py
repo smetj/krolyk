@@ -20,15 +20,24 @@
 #       Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #       MA 02110-1301, USA.
 #       
-#       
+#
 import logging
-
+import time
 class nagios():
-    def __init__(self,config):
+    '''Class which converts MonCli reports into Nagios check results and writes them into Spool/Queue.
+    This class receives 2 methods and a dictionary object from Krolyk.
+    
+    self.config     The dictionary 
+    
+    '''    
+    def __init__(self):
+        #self.config=None
+        #self.acknowledge=None
+        #self.block=None
         self.logging = logging.getLogger(__name__)
         self.logging.info('Initialized.')
-        self.config=config
-    def do(self):
+    def consume(self,ch, method, properties, body):
         print self.config
-        pass
-        
+        print body
+        time.sleep(5)
+        self.acknowledge(method.delivery_tag)
