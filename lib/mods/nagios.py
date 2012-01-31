@@ -23,21 +23,23 @@
 #
 import logging
 import time
-class nagios():
+class Nagios():
     '''Class which converts MonCli reports into Nagios check results and writes them into Spool/Queue.
-    This class receives 2 methods and a dictionary object from Krolyk.
     
-    self.config     The dictionary 
+    This class receives 2 methods and a dictionary object from Krolyk:
+    
+    self.config         The dictionary containing the parameters coming from this class's section in the Krolyk config file.
+    self.acknowledge    Krolyk method which acknowledges the data coming from the queue.
+    self.block          Krolyk method to check whether the main loop is going to exit.
     
     '''    
     def __init__(self):
-        #self.config=None
-        #self.acknowledge=None
-        #self.block=None
         self.logging = logging.getLogger(__name__)
         self.logging.info('Initialized.')
     def consume(self,ch, method, properties, body):
-        print self.config
-        print body
-        time.sleep(5)
+        #Convert body into a nagios check results
+        
+        #Write Nagios check result into spool/queue
+        
+        #Acknowledge message with broker
         self.acknowledge(method.delivery_tag)

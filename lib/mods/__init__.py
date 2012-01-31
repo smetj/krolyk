@@ -22,4 +22,4 @@
 #       
 #       
 
-from nagios import nagios
+from nagios import Nagios
