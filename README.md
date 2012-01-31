@@ -10,14 +10,11 @@
 
 Krolyk 0.1 Copyright 2011 by Jelle Smet <development@smetj.net>
 
-		
 Description:
-
     Krolyk is a framework which allows you to easily register a Python class as a process 
     to consume and process data coming from a RabbitMQ message broker.
     
 Usage:
-        
     krolyk command --config name
     
     Valid commands:
@@ -32,16 +29,13 @@ Usage:
 
         --config    Defines the location of the config file.
 
-
 Config file:
-
 The config file contains a section called "modules"
 Each class has its own section under modules.  The name of the module section should match the name of your class.
 Your module (which contains the class) should be stored in the mods/ directory.
 
 Each section should contain at least following parameters:
-    
-        "_enabled"       = True
+            "_enabled"       = True
         "_workers"       = 5
         "_broker"        = "sandbox"
         "_queue"         = "molog_output"
