@@ -103,10 +103,10 @@ class Nagios():
         for evaluator in evaluators:
             status_list.append(evaluators[evaluator]["status"])
         type = self.getType(status_list)
-        status = self.heavyWeight(status_list,type)
+        status = self.chooseStatus(status_list,type)
         return (type, status)
         
-    def heavyWeight(self, status_list, type):
+    def chooseStatus(self, status_list, type):
         '''Does the actual work figuring out which is the worst status.'''
         global_status=None
         if type == 'service':
@@ -117,7 +117,6 @@ class Nagios():
                     break
                 if status == 'Warning' and status == 'OK':
                     global_status = status
-                    break
         if type == 'host':
             global_status = 'Down'
             for status in status_list:
