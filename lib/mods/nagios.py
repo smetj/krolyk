@@ -21,6 +21,10 @@
 #       MA 02110-1301, USA.
 #       
 #
+
+# Disclaimer:   This plugin should be able to write directly in the Nagios spool 
+#               file instead of opening/closing Nagios named pipe for each message.
+
 import logging
 import time
 import json
@@ -60,7 +64,7 @@ class Nagios():
         elif type == 'host':
             return self.createHost(status,document)
             
-    def createService(self,status,document):
+    def createService(self, status, document):
         '''Converts a document into a Nagios service_check_result format.'''
         return ( '[%s] PROCESS_SERVICE_CHECK_RESULT;%s;%s;%s;%s - %s\n%s\n|%s' % 
                         (parse(document['report']['time']),
@@ -72,11 +76,11 @@ class Nagios():
                         document['plugin']['verbose'],
                         self.createPerfdata(document)) )
                         
-    def createHost(self,status,document):
+    def createHost(self, status, document):
         '''Converts a document into a Nagios host_check_result format.'''
         pass
  
-    def createPerfdata(self,document):
+    def createPerfdata(self, document):
         '''Creates Nagios style performance data out of a document.'''
         perfdata=[]
         for evaluator in document['evaluators']:
@@ -86,14 +90,14 @@ class Nagios():
                 perfdata.append("'%s'=%s;;;;" % (evaluator, document['evaluators'][evaluator]['value']))
         return " ".join(perfdata)
         
-    def writeFile(self,data):
+    def writeFile(self, data):
         '''Writes into the Nagios named pipe. Should rewrite this into writing directly to the spool directory.
         Open closes on each incoming check result is not efficient.'''
         cmd=open(self.config['pipe'],'w')
         cmd.write(data+'\n')
         cmd.close()
 
-    def calculateStatus(self,evaluators):
+    def calculateStatus(self, evaluators):
         '''Calculates the worst status out of each evaluator status'''
         status_list=[]
         for evaluator in evaluators:
@@ -102,7 +106,7 @@ class Nagios():
         status = self.heavyWeight(status_list,type)
         return (type, status)
         
-    def heavyWeight(self,status_list,type):
+    def heavyWeight(self, status_list, type):
         '''Does the actual work figuring out which is the worst status.'''
         global_status=None
         if type == 'service':
@@ -122,7 +126,7 @@ class Nagios():
                     break
         return global_status
         
-    def getType(self,status_list):
+    def getType(self, status_list):
         '''Based upon the Status of the evaluators, this function determines whether we're dealing with a host or service.'''
         for status in status_list:
             if status in self.service.keys():
