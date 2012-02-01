@@ -274,8 +274,8 @@ if __name__ == '__main__':
                 server.start()
         elif cli_actions[0] == 'debug':
             server.start()
- #   except Exception as err:
- #       print str(err)
+    except Exception as err:
+        print str(err)
     except KeyboardInterrupt:
         server.stop()
         server.deletePID()

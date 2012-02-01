@@ -23,6 +23,9 @@
 #
 import logging
 import time
+import json
+from xml.utils.iso8601 import parse #pip install pyxml
+
 class Nagios():
     '''Class which converts MonCli reports into Nagios check results and writes them into Spool/Queue.
     
@@ -36,10 +39,93 @@ class Nagios():
     def __init__(self):
         self.logging = logging.getLogger(__name__)
         self.logging.info('Initialized.')
+        self.service = { 'OK':0, 'Warning':1, 'Critical':2, 'Unknown':3 }
+        self.host = { 'Up':0, 'Down':1, 'Unreachable':2 }
+        
     def consume(self,ch, method, properties, body):
-        #Convert body into a nagios check results
+        '''The callback function which is called by Krolyk and which delivers the actual content from RabbitMQ.'''
+        try:
+            document = json.loads(body)
+            (type,status) = self.calculateStatus(document['evaluators'])
+            file_content = self.createData(type,status,document)
+            self.writeFile(file_content)
+            self.acknowledge(method.delivery_tag)
+        except Exception as err:
+            self.logging.warning('An error occurred: %s' % err)
+            
+    def createData(self, type, status, document):
+        '''Convenience function which calls the right function based upon type'''
+        if type == 'service':
+            return self.createService(status,document)
+        elif type == 'host':
+            return self.createHost(status,document)
+            
+    def createService(self,status,document):
+        '''Converts a document into a Nagios service_check_result format.'''
+        return ( '[%s] PROCESS_SERVICE_CHECK_RESULT;%s;%s;%s;%s - %s\n%s\n|%s' % 
+                        (parse(document['report']['time']),
+                        document['destination']['name'],
+                        document['destination']['subject'],
+                        self.service[status],
+                        status,
+                        document['report']['message'],
+                        document['plugin']['verbose'],
+                        self.createPerfdata(document)) )
+                        
+    def createHost(self,status,document):
+        '''Converts a document into a Nagios host_check_result format.'''
+        pass
+ 
+    def createPerfdata(self,document):
+        '''Creates Nagios style performance data out of a document.'''
+        perfdata=[]
+        for evaluator in document['evaluators']:
+            if document['evaluators'][evaluator]['metric'] in [ '%', 's', 'us', 'ms', 'B', 'KB', 'MB', 'TB', 'c' ]:
+                perfdata.append("'%s'=%s%s;;;;" % (evaluator, document['evaluators'][evaluator]['value'], document['evaluators'][evaluator]['metric']))
+            else:
+                perfdata.append("'%s'=%s;;;;" % (evaluator, document['evaluators'][evaluator]['value']))
+        return " ".join(perfdata)
         
-        #Write Nagios check result into spool/queue
+    def writeFile(self,data):
+        '''Writes into the Nagios named pipe. Should rewrite this into writing directly to the spool directory.
+        Open closes on each incoming check result is not efficient.'''
+        cmd=open(self.config['pipe'],'w')
+        cmd.write(data+'\n')
+        cmd.close()
+
+    def calculateStatus(self,evaluators):
+        '''Calculates the worst status out of each evaluator status'''
+        status_list=[]
+        for evaluator in evaluators:
+            status_list.append(evaluators[evaluator]["status"])
+        type = self.getType(status_list)
+        status = self.heavyWeight(status_list,type)
+        return (type, status)
         
-        #Acknowledge message with broker
-        self.acknowledge(method.delivery_tag)
+    def heavyWeight(self,status_list,type):
+        '''Does the actual work figuring out which is the worst status.'''
+        global_status=None
+        if type == 'service':
+            global_status = 'OK'
+            for status in status_list:
+                if status == 'Critical' or status == 'Unknown':
+                    global_status = status
+                    break
+                if status == 'Warning' and status == 'OK':
+                    global_status = status
+                    break
+        if type == 'host':
+            global_status = 'Down'
+            for status in status_list:
+                if status == 'Down' or status == 'Unknown':
+                    global_status = status
+                    break
+        return global_status
+        
+    def getType(self,status_list):
+        '''Based upon the Status of the evaluators, this function determines whether we're dealing with a host or service.'''
+        for status in status_list:
+            if status in self.service.keys():
+                return 'service'
+            elif status in self.host.keys():
+                return 'host'
