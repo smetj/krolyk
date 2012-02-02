@@ -66,7 +66,7 @@ class Nagios():
             
     def createService(self, status, document):
         '''Converts a document into a Nagios service_check_result format.'''
-        return ( '[%s] PROCESS_SERVICE_CHECK_RESULT;%s;%s;%s;%s - %s\n%s\n|%s' % 
+        return ( '[%s] PROCESS_SERVICE_CHECK_RESULT;%s;%s;%s;%s - %s\\n<pre>%s</pre>\\n|%s' % 
                         (parse(document['report']['time']),
                         document['destination']['name'],
                         document['destination']['subject'],
