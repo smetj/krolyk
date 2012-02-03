@@ -23,3 +23,5 @@
 #       
 
 from nagios import Nagios
+from elasticsearch import ElasticSearch
+from skeleton import Skeleton

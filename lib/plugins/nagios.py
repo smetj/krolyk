@@ -33,15 +33,15 @@ from xml.utils.iso8601 import parse #pip install pyxml
 class Nagios():
     '''Class which converts MonCli reports into Nagios check results and writes them into Spool/Queue.
     
-    This class receives 2 methods and a dictionary object from Krolyk:
+    This class receives 2 methods
     
-    self.config         The dictionary containing the parameters coming from this class's section in the Krolyk config file.
     self.acknowledge    Krolyk method which acknowledges the data coming from the queue.
     self.block          Krolyk method to check whether the main loop is going to exit.
     
     '''    
-    def __init__(self):
+    def __init__(self,config):
         self.logging = logging.getLogger(__name__)
+        self.config = config
         self.logging.info('Initialized.')
         self.service = { 'OK':0, 'Warning':1, 'Critical':2, 'Unknown':3 }
         self.host = { 'Up':0, 'Down':1, 'Unreachable':2 }

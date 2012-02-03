@@ -86,12 +86,11 @@ class ModManager():
             if self.cfg[module]['_enabled'] == 'True':
                 try:
                     self.logging.info('Module %s enabled importing.' % module)
-                    import mods
+                    import plugins
                     self.register[module]={}
                     for counter in range(int(self.cfg[module]['_workers'])):
                         self.register[module][counter]={}
-                        self.register[module][counter]['mod'] = getattr(mods,module)()
-                        self.register[module][counter]['mod'].config = self.__cleanConfig(self.cfg[module])
+                        self.register[module][counter]['mod'] = getattr(plugins,module)(self.__cleanConfig(self.cfg[module]))
                         self.register[module][counter]['mod'].block = self.block
                                                 
                         self.register[module][counter]['proc'] = Worker(config=self.cfg[module],
@@ -101,8 +100,8 @@ class ModManager():
                         self.register[module][counter]['mod'].acknowledge = self.register[module][counter]['proc'].acknowledge
                         
                         self.register[module][counter]['proc'].start()
-                except:
-                    self.logging.warning('Failed to load module %s' % module)
+                except Exception as err:
+                    self.logging.warning('Failed to load module %s. Reason: %s' % (module, err))
             else:
                 self.logging.info('Module %s disabled.' % module)
     def __cleanConfig(self, config):
@@ -122,7 +121,7 @@ class Server():
     def load_config(self, file):
         try:
             self.cfg = ConfigObj(file)
-            sys.path.append(self.cfg['application']['modules'])
+            sys.path.append(self.cfg['application']['plugins'])
         except Exception as err:
             print "Error reading config file. Reason: %s" % (err)
             sys.exit(1)        
@@ -173,7 +172,7 @@ class Server():
         self.doPID()
         
         #Initiate ModManager
-        self.mod = ModManager(block=self.block,cfg=self.cfg['modules'])
+        self.mod = ModManager(block=self.block,cfg=self.cfg['plugins'])
         
         while self.block()==True:
             time.sleep(0.1)
@@ -222,9 +221,9 @@ Usage:
 
 Config file:
 
-The config file contains a section called "modules"
-Each class has its own section under modules.  The name of the module section should match the name of your class.
-Your module (which contains the class) should be stored in the mods/ directory.
+The config file contains a section called "plugins"
+Each class has its own section under plugins.  The name of the module section should match the name of your class.
+Your module (which contains the class) should be stored in the plugins/ directory.
 
 Each section should contain at least following parameters:
     

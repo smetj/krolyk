@@ -29,7 +29,7 @@ Config file:
 
     The config file contains a section called "modules"
     Each class has its own section under modules. The name of the module section should match the name of your class.
-    Your module (which contains the class) should be stored in the mods/ directory.
+    Your module (which contains the class) should be stored in the plugins/ directory.
 
     Each section should contain at least following parameters:
 
@@ -45,8 +45,6 @@ Config file:
 
     Your class will receive 2 methods and 1 dictionary object from the Krolyk framework:
 
-    self.config      :  The dictionary containing the parameters coming from this class's 
-                        section in the Krolyk config file.
     self.acknowledge :  Krolyk method which acknowledges the data coming from the queue.
     self.block       :  Krolyk method to check whether the main loop is going to exit.
 
