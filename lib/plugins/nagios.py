@@ -73,7 +73,7 @@ class Nagios():
                         self.service[status],
                         status,
                         document['report']['message'],
-                        document['plugin']['verbose'],
+                        '\\n'.join(document['plugin']['verbose']),
                         self.createPerfdata(document)) )
                         
     def createHost(self, status, document):
