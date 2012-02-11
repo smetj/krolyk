@@ -240,7 +240,6 @@ You can define as much extra parameters as you want (without leading underscore)
 
 Your class will receive 2 methods and 1 dictionary object from the Krolyk framework:
 
-    self.config         The dictionary containing the parameters coming from this class's section in the Krolyk config file.
     self.acknowledge    Krolyk method which acknowledges the data coming from the queue.
     self.block          Krolyk method to check whether the main loop is going to exit.
 

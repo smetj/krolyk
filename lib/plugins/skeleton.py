@@ -41,6 +41,12 @@ class Skeleton():
     def __init__(self,config):
         self.logging = logging.getLogger(__name__)
         self.config = config
+        
+        #Receives acknowledgement function from Krolyk.
+        self.acknowledge = None
+        #Receives Krolyk framework lock.
+        self.block = None
+        
         self.logging.info('Initialized.')
         
     def consume(self,ch, method, properties, body):
