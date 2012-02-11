@@ -30,7 +30,7 @@ import time
 import json
 from xml.utils.iso8601 import parse #pip install pyxml
 
-class Nagios():
+class Moncli2Nagios():
     '''Class which converts MonCli reports into Nagios check results and writes them into Spool/Queue.
     
     This class receives 2 methods

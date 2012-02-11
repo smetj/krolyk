@@ -22,6 +22,6 @@
 #       
 #       
 
-from nagios import Nagios
+from moncli2nagios import Moncli2Nagios
 from elasticsearch import ElasticSearch
 from skeleton import Skeleton

@@ -183,8 +183,9 @@ class Server():
         self.block=False
         for module in self.mod.register:
             for instance in self.mod.register[module]:
-                self.mod.register[module][instance]['proc'].join()
-    def logger(self,file=None, loglevel=logging.DEBUG):
+                if self.mod.register[module][instance].has_key('proc'):
+                    self.mod.register[module][instance]['proc'].join()
+    def logger(self,file=None, loglevel=logging.WARNING):
         format=('%(asctime)s %(levelname)s %(name)s %(message)s')
         if file == None:
             logging.basicConfig(level=loglevel, format=format)
