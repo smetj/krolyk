@@ -93,9 +93,14 @@ class Moncli2Nagios():
     def writeFile(self, data):
         '''Writes into the Nagios named pipe. Should rewrite this into writing directly to the spool directory.
         Open closes on each incoming check result is not efficient.'''
-        cmd=open(self.config['pipe'],'w')
-        cmd.write(data+'\n')
-        cmd.close()
+        if data != None and data != '':
+            print data
+            cmd=open(self.config['pipe'],'w')
+            cmd.write(data+'\n')
+            cmd.close()            
+        else:
+            pass
+            
 
     def calculateStatus(self, evaluators):
         '''Calculates the worst status out of each evaluator status'''
