@@ -50,7 +50,7 @@ class Moncli2Nagios():
         '''The callback function which is called by Krolyk and which delivers the actual content from RabbitMQ.'''
         try:
             document = json.loads(body)
-            (type,status) = self.calculateStatus(document['evaluators'])
+            (type,status) = self.calculateStatus(document['evaluators'],self.getType(tags=document['tags']))
             file_content = self.createData(type,status,document)
             self.writeFile(file_content)
             self.acknowledge(method.delivery_tag)
@@ -73,9 +73,9 @@ class Moncli2Nagios():
                         self.service[status],
                         status,
                         document['report']['message'],
-                        '\\n'.join(document['plugin']['verbose']),
+                        '\\n'.join(document['plugin']['verbose'][0:15]),
                         self.createPerfdata(document)) )
-                        
+                           
     def createHost(self, status, document):
         '''Converts a document into a Nagios host_check_result format.'''
         pass
@@ -83,11 +83,12 @@ class Moncli2Nagios():
     def createPerfdata(self, document):
         '''Creates Nagios style performance data out of a document.'''
         perfdata=[]
-        for evaluator in document['evaluators']:
+        for evaluator in sorted(document['evaluators']):
             if document['evaluators'][evaluator]['metric'] in [ '%', 's', 'us', 'ms', 'B', 'KB', 'MB', 'TB', 'c' ]:
                 perfdata.append("'%s'=%s%s;;;;" % (evaluator, document['evaluators'][evaluator]['value'], document['evaluators'][evaluator]['metric']))
             else:
                 perfdata.append("'%s'=%s;;;;" % (evaluator, document['evaluators'][evaluator]['value']))
+        perfdata.append("[%s]" % document['destination']['subject'])
         return " ".join(perfdata)
         
     def writeFile(self, data):
@@ -100,14 +101,12 @@ class Moncli2Nagios():
             cmd.close()            
         else:
             pass
-            
-
-    def calculateStatus(self, evaluators):
+  
+    def calculateStatus(self, evaluators,type):
         '''Calculates the worst status out of each evaluator status'''
         status_list=[]
         for evaluator in evaluators:
             status_list.append(evaluators[evaluator]["status"])
-        type = self.getType(status_list)
         status = self.chooseStatus(status_list,type)
         return (type, status)
         
@@ -130,10 +129,9 @@ class Moncli2Nagios():
                     break
         return global_status
         
-    def getType(self, status_list):
+    def getType(self, tags=[]):
         '''Based upon the Status of the evaluators, this function determines whether we're dealing with a host or service.'''
-        for status in status_list:
-            if status in self.service.keys():
+        if "nagios:service" in tags:
                 return 'service'
-            elif status in self.host.keys():
+        elif "nagios:host" in tags:
                 return 'host'
