@@ -33,11 +33,11 @@ import time
 
 class Worker(Process):
     
-    def __init__(self,config,cb_consume,block):
+    def __init__(self,config,plugin,block):
         Process.__init__(self)
         self.logging = logging.getLogger(__name__)
         self.c=config
-        self.cb_consume=cb_consume
+        self.plugin=plugin
         self.block=block
         self.daemon=True
     
@@ -70,11 +70,12 @@ class Worker(Process):
         self.channel = new_channel
         self.__initialize()
         self.channel.basic_qos(prefetch_count=1)
-        self.channel.basic_consume(self.cb_consume, queue = self.c['_queue'])
+        self.channel.basic_consume(self.plugin.consume, queue = self.c['_queue'])
     
     def __initialize(self):
         self.logging.debug('Creating queues and bindings on broker.')                
         self.channel.queue_declare(queue=self.c['_queue'],durable=True)
+        self.plugin.acknowledge=self.acknowledge
     
     def acknowledge(self,tag):
         self.channel.basic_ack(delivery_tag=tag)
@@ -97,16 +98,11 @@ class ModManager():
                     import plugins
                     self.register[module]={}
                     for counter in range(int(self.cfg[module]['_workers'])):
-                        self.register[module][counter]={}
-                        self.register[module][counter]['mod'] = getattr(plugins,module)(config=self.__cleanConfig(self.cfg[module]),block=self.block)
-                                                
-                        self.register[module][counter]['proc'] = Worker(config=self.cfg[module],
-                                                                    cb_consume=self.register[module][counter]['mod'].consume,
-                                                                    block=self.block)
-
-                        self.register[module][counter]['mod'].acknowledge = self.register[module][counter]['proc'].acknowledge
-                                                
-                        self.register[module][counter]['proc'].start()
+                        self.register[module][counter] = Worker(config=self.cfg[module],
+                                                                plugin=getattr(plugins,module)(config=self.__cleanConfig(self.cfg[module])),
+                                                                block=self.block)
+                        #self.register[module][counter]['mod'].acknowledge = self.register[module][counter]['proc'].acknowledge
+                        self.register[module][counter].start()
                 except Exception as err:
                     self.logging.warning('Failed to load module %s. Reason: %s' % (module, err))
             else:

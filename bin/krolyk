@@ -28,11 +28,11 @@ import sys
 import daemon
 import os
 import time
-try:
-    import krolyk
-except:
-    print "Please set $PYTHONPATH to include the directory containing the Krolyk libs.\n"
-    sys.exit(1)
+#try:
+import krolyk
+#except:
+    #print "Please set $PYTHONPATH to include the directory containing the Krolyk libs.\n"
+    #sys.exit(1)
 from optparse import OptionParser
 from configobj import ConfigObj
        
@@ -112,8 +112,7 @@ class Server():
         self.lock=False
         for module in self.mod.register:
             for instance in self.mod.register[module]:
-                if self.mod.register[module][instance].has_key('proc'):
-                    self.mod.register[module][instance]['proc'].join()
+                self.mod.register[module][instance].join()
     def logger(self,file=None, loglevel=logging.DEBUG):
         format=('%(asctime)s %(levelname)s %(name)s %(message)s')
         if file == None:
