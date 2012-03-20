@@ -32,6 +32,7 @@ import pika
 import time
 
 class Worker(Process):
+    
     def __init__(self,config,cb_consume,block):
         Process.__init__(self)
         self.logging = logging.getLogger(__name__)
@@ -39,6 +40,7 @@ class Worker(Process):
         self.cb_consume=cb_consume
         self.block=block
         self.daemon=True
+    
     def run(self):
         period=0
         while self.block() == True:
@@ -59,29 +61,34 @@ class Worker(Process):
                 break
             except:
                 self.logging.debug('Lost connection to Broker, sleeping %s seconds and restarting.' % (period))
-            
+        
     def __on_connected(self,connection):
         self.logging.info('Connecting to broker.')
         connection.channel(self.__on_channel_open)
+    
     def __on_channel_open(self,new_channel):
         self.channel = new_channel
         self.__initialize()
         self.channel.basic_qos(prefetch_count=1)
         self.channel.basic_consume(self.cb_consume, queue = self.c['_queue'])
+    
     def __initialize(self):
         self.logging.debug('Creating queues and bindings on broker.')                
         self.channel.queue_declare(queue=self.c['_queue'],durable=True)
+    
     def acknowledge(self,tag):
         self.channel.basic_ack(delivery_tag=tag)
 
 
 class ModManager():
+  
     def __init__(self, cfg, block):
         self.logging = logging.getLogger(__name__)
         self.cfg=cfg
         self.block=block
         self.register={}
         self.__load()        
+  
     def __load(self):
         for module in self.cfg:
             if self.cfg[module]['_enabled'] == 'True':
@@ -104,6 +111,7 @@ class ModManager():
                     self.logging.warning('Failed to load module %s. Reason: %s' % (module, err))
             else:
                 self.logging.info('Module %s disabled.' % module)
+  
     def __cleanConfig(self, config):
         cleaned={}
         for item in config:
