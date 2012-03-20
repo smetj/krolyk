@@ -28,11 +28,11 @@ import sys
 import daemon
 import os
 import time
-#try:
-import krolyk
-#except:
-    #print "Please set $PYTHONPATH to include the directory containing the Krolyk libs.\n"
-    #sys.exit(1)
+try:
+    import krolyk
+except:
+    print "Please set $PYTHONPATH to include the directory containing the Krolyk libs.\n"
+    sys.exit(1)
 from optparse import OptionParser
 from configobj import ConfigObj
        
@@ -43,7 +43,7 @@ class Server():
         self.load_config(config)
         self.procs = []
         self.lock = True
-        #self.load_modules()
+        self.load_modules()
     def load_modules(self):
         sys.path.append(self.cfg['application']['libs'])
         __import__ ('krolyk')
