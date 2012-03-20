@@ -41,7 +41,7 @@ class Moncli2Graphite():
     self.block          Krolyk method to check whether the main loop is going to exit.
     
     '''    
-    def __init__(self,config,block):
+    def __init__(self,config):
         self.logging = logging.getLogger(__name__)
         self.config = config
         
