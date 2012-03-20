@@ -1,5 +1,5 @@
 <pre>
-Krolyk 0.3
+Krolyk
 
 
 Description:
