@@ -38,11 +38,13 @@ from configobj import ConfigObj
        
 class Server():
     '''Server class handling process control, startup & shutdown'''
+
     def __init__(self, config=None):
         self.cfg=None
         self.load_config(config)
         self.procs = []
         self.lock = True
+
     def load_config(self, file):
         try:
             self.cfg = ConfigObj(file)
@@ -50,11 +52,14 @@ class Server():
         except Exception as err:
             print "Error reading config file. Reason: %s" % (err)
             sys.exit(1)        
+
     def block(self):
         return self.lock
+
     def doPID(self):
         if self.checkPIDRunning() == False:
             self.writePID()
+
     def checkPIDRunning(self):
         '''Checks whether the pid file exists and if it does, checks whether a process is running with that pid.
         Returns False when no process is running with that pid otherwise True'''
@@ -73,6 +78,7 @@ class Server():
         else:
             sys.stderr.write('There is already a process running with pid %s\n'%(pid))
             sys.exit(1)             
+
     def writePID(self):
         try:
             pid = open ( self.cfg['application']['pid'], 'w' )
@@ -81,11 +87,13 @@ class Server():
         except Exception as err:
             sys.stderr.write('I could not write the pid file. Reason: %s\n'%(err))
             sys.exit(1)
+
     def deletePID(self):
         try:
             os.remove ( self.cfg['application']['pid'] )
         except:
             pass                
+
     def start(self):
         #Creating logging object
         self.logger()
@@ -103,13 +111,15 @@ class Server():
             time.sleep(0.1)
         
         self.logging.info('Exit')
+
     def stop(self):
         self.logging.info('Received stop. Starting stop sequence.')
         self.lock=False
         for module in self.mod.register:
             for instance in self.mod.register[module]:
                 self.mod.register[module][instance].join()
-    def logger(self,file=None, loglevel=logging.DEBUG):
+
+    def logger(self,file=None, loglevel=logging.INFO):
         format=('%(asctime)s %(levelname)s %(name)s %(message)s')
         if file == None:
             logging.basicConfig(level=loglevel, format=format)
