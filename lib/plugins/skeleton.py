@@ -22,9 +22,6 @@
 #       
 #
 
-# Disclaimer:   This plugin should be able to write directly in the Nagios spool 
-#               file instead of opening/closing Nagios named pipe for each message.
-
 import logging
 import time
 import json
