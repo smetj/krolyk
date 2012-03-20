@@ -26,7 +26,7 @@ __version__= '0.3'
 
 class Help():
     def __init__(self):
-        print ('Krolyk by Jelle Smet development@smetj.net' %(__version__))
+        print ('Krolyk v%s by Jelle Smet development@smetj.net' %(__version__))
         print ('''
         
 Description:

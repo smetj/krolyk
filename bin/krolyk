@@ -142,7 +142,7 @@ if __name__ == '__main__':
             elif cli_actions[0] == 'debug':
                 server.start()
             else:
-                Help()
+                krolyk.Help()
                 sys.exit(0)
     except Exception as err:
         print str(err)
