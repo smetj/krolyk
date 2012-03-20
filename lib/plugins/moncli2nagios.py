@@ -50,9 +50,10 @@ class Moncli2Nagios():
         '''The callback function which is called by Krolyk and which delivers the actual content from RabbitMQ.'''
         try:
             document = json.loads(body)
-            (type,status) = self.calculateStatus(document['evaluators'],self.getType(tags=document['tags']))
-            file_content = self.createData(type,status,document)
-            self.writeFile(file_content)
+            if "nagios:process" in document['tags']:
+                (type,status) = self.calculateStatus(document['evaluators'],self.getType(tags=document['tags']))
+                file_content = self.createData(type,status,document)
+                self.writeFile(file_content)            
             self.acknowledge(method.delivery_tag)
         except Exception as err:
             self.logging.warning('An error occurred: %s' % err)
@@ -82,20 +83,22 @@ class Moncli2Nagios():
  
     def createPerfdata(self, document):
         '''Creates Nagios style performance data out of a document.'''
-        perfdata=[]
-        for evaluator in sorted(document['evaluators']):
-            if document['evaluators'][evaluator]['metric'] in [ '%', 's', 'us', 'ms', 'B', 'KB', 'MB', 'TB', 'c' ]:
-                perfdata.append("'%s'=%s%s;;;;" % (evaluator, document['evaluators'][evaluator]['value'], document['evaluators'][evaluator]['metric']))
-            else:
-                perfdata.append("'%s'=%s;;;;" % (evaluator, document['evaluators'][evaluator]['value']))
-        perfdata.append("[%s]" % document['destination']['subject'])
-        return " ".join(perfdata)
+        if document.has_key('nagios:performance'):
+            perfdata=[]
+            for evaluator in sorted(document['evaluators']):
+                if document['evaluators'][evaluator]['metric'] in [ '%', 's', 'us', 'ms', 'B', 'KB', 'MB', 'TB', 'c' ]:
+                    perfdata.append("'%s'=%s%s;;;;" % (evaluator, document['evaluators'][evaluator]['value'], document['evaluators'][evaluator]['metric']))
+                else:
+                    perfdata.append("'%s'=%s;;;;" % (evaluator, document['evaluators'][evaluator]['value']))
+            perfdata.append("[%s]" % document['destination']['subject'])
+            return " ".join(perfdata)
+        else:
+            return ''
         
     def writeFile(self, data):
         '''Writes into the Nagios named pipe. Should rewrite this into writing directly to the spool directory.
         Open closes on each incoming check result is not efficient.'''
         if data != None and data != '':
-            print data
             cmd=open(self.config['pipe'],'w')
             cmd.write(data+'\n')
             cmd.close()            

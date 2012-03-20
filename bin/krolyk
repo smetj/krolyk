@@ -22,6 +22,7 @@
 #       
 #       
 
+
 import logging
 import sys
 import daemon
@@ -34,11 +35,7 @@ except:
     sys.exit(1)
 from optparse import OptionParser
 from configobj import ConfigObj
-
-__version__='0.3'
-
-
-        
+       
 class Server():
     '''Server class handling process control, startup & shutdown'''
     def __init__(self, config=None):
@@ -131,18 +128,22 @@ if __name__ == '__main__':
     (cli_options,cli_actions)=parser.parse_args()   
     
     try:
-        server=Server(config = cli_options.config)
         if len (cli_actions) == 0:
-            Help()
+            krolyk.Help()
             sys.exit(0)
-        if cli_actions[0] == 'help':
-            Help()
-            sys.exit(0)
-        elif cli_actions[0] == 'start':
-            with daemon.DaemonContext():
+        else:
+            server=Server(config = cli_options.config)
+            if cli_actions[0] == 'help':
+                krolyk.Help()
+                sys.exit(0)
+            elif cli_actions[0] == 'start':
+                with daemon.DaemonContext():
+                    server.start()
+            elif cli_actions[0] == 'debug':
                 server.start()
-        elif cli_actions[0] == 'debug':
-            server.start()
+            else:
+                Help()
+                sys.exit(0)
     except Exception as err:
         print str(err)
     except KeyboardInterrupt:
