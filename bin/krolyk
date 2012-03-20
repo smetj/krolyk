@@ -43,10 +43,6 @@ class Server():
         self.load_config(config)
         self.procs = []
         self.lock = True
-        self.load_modules()
-    def load_modules(self):
-        sys.path.append(self.cfg['application']['libs'])
-        __import__ ('krolyk')
     def load_config(self, file):
         try:
             self.cfg = ConfigObj(file)
