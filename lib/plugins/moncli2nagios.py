@@ -122,7 +122,7 @@ class Moncli2Nagios():
                 if status == 'Critical' or status == 'Unknown':
                     global_status = status
                     break
-                if status == 'Warning' and status == 'OK':
+                if status == 'Warning' or status == 'OK':
                     global_status = status
         if type == 'host':
             global_status = 'Down'
